@@ -1,62 +1,69 @@
-// The MIT License (MIT)
-//
-// Copyright (c) 2021-2022 Alexander Grebenyuk (github.com/kean).
-
 import XCTest
-import OpenAPIKit30
 @testable import create_api
 
-final class GenerateTests: GenerateBaseTests {
+final class GenerateTests: GenerateTestCase {
     func testPestore() throws {
-        try testSpec(name: "petstore", ext: "yaml", package: "petstore-default")
+        try snapshot(
+            spec: .petstore,
+            name: "petstore-default"
+        )
     }
     
     func testEdgecases() throws {
-        try testSpec(name: "edgecases", ext: "yaml", package: "edgecases-default")
+        try snapshot(
+            spec: .edgecases,
+            name: "edgecases-default"
+        )
     }
 
     func testInlining() throws {
-        try testSpec(name: "inlining", ext: "yaml", package: "inlining-default", config: """
-        entities:
-          isInliningPropertiesFromReferencedSchemas: true
-          entitiesGeneratedAsClasses:
-            - Letter
-        """)
+        try snapshot(
+            spec: .inlining,
+            name: "inlining-default",
+            configuration: """
+            entities:
+              inlineReferencedSchemas: true
+              typeOverrides:
+                Letter: finalClass
+            """
+        )
     }
 
     func testDiscriminator() throws {
-        try testSpec(name: "discriminator", ext: "yaml", package: "discriminator")
+        try snapshot(
+            spec: .discriminator,
+            name: "discriminator"
+        )
     }    
     
     func testGitHub() throws {
-        // GIVEN
-        let command = try Generate.parse([
-            pathForSpec(named: "github", ext: "yaml"),
-            "--output", temp.url.path,
-            "--strict",
-            "--package", "OctoKit",
-            "--vendor", "github",
-            "--config", config("""
+        try snapshot(
+            spec: .github,
+            name: "OctoKit",
+            arguments: [
+                "--strict"
+            ],
+            configuration: """
+            vendor: github
             paths:
-              overrideResponses:
+              overriddenResponses:
                 accepted: "Void"
-              overridenBodyTypes:
+              overriddenBodyTypes:
                 application/octocat-stream: String
+            entities:
+              inlineReferencedSchemas: false
             rename:
               enumCases:
                 reactions-+1: "reactionsPlusOne"
                 reactions--1: "reactionsMinusOne"
-            """, ext: "yaml")
-        ])
-                
-        // WHEN
-        try command.run()
-        
-        // THEN
-        try compare(package: "OctoKit")
+            """
+        )
     }
 
     func testCookpad() throws {
-        try testSpec(name: "cookpad", ext: "json")
+        try snapshot(
+            spec: .cookpad,
+            name: "cookpad"
+        )
     }
 }

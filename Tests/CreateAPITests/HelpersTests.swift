@@ -1,11 +1,6 @@
-// The MIT License (MIT)
-//
-// Copyright (c) 2021-2022 Alexander Grebenyuk (github.com/kean).
-
 import XCTest
-import class Foundation.Bundle
+@testable import CreateOptions
 @testable import create_api
-import Yams
 
 final class HelpersTests: XCTestCase {    
     func testTypeName() {
@@ -48,8 +43,9 @@ final class HelpersTests: XCTestCase {
         
         // Additional acronyms
         do {
-            let options = GenerateOptions()
-            options.addedAcronyms = ["nft"]
+            var configOptions = ConfigOptions.default
+            configOptions.acronyms.append("nft")
+            let options = GenerateOptions(configOptions: configOptions)
             XCTAssertEqual(TypeName(processing: "myNft", options: options).rawValue, "MyNFT")
         }
         

@@ -1,114 +1,84 @@
-// The MIT License (MIT)
-//
-// Copyright (c) 2021-2022 Alexander Grebenyuk (github.com/kean).
-
 import XCTest
-import OpenAPIKit30
 @testable import create_api
 
-final class GenerateOptionsTests: GenerateBaseTests {
-    func testPestoreOnlySchemas() throws {
-        // GIVEN
-        let command = try Generate.parse([
-            pathForSpec(named: "petstore", ext: "yaml"),
-            "--output", temp.url.path,
-            "--package", "petstore-only-schemas",
-            "--generate", "entities"
-        ])
-        
-        // WHEN
-        try command.run()
-        
-        // THEN
-        try compare(package: "petstore-only-schemas")
+final class GenerateOptionsTests: GenerateTestCase {
+    func testPetstoreReadsOverridesFromArguments() throws {
+        try snapshot(
+            spec: .petstore,
+            name: "petstore-reads-overrides-from-arguments",
+            arguments: [
+                "--config-option", "entities.include=[Pet]",
+                "--config-option", "entities.mutableProperties=false",
+                "--config-option", "entities.filenameTemplate=Models.swift",
+                "--config-option", "access=internal",
+                "--config-option", "module=PetstoreKit"
+            ],
+            configuration: """
+            generate: [entities]
+            module: NotPetstoreKit
+            mergeSources: true
+            """
+        )
     }
-    
-    func testPestoreChangeFilename() throws {
-        // GIVEN
-        let command = try Generate.parse([
-            pathForSpec(named: "petstore", ext: "yaml"),
-            "--output", temp.url.path,
-            "--package", "petstore-change-filename",
-            "--filename-template", "%0.generated.swift"
-        ])
-        
-        // WHEN
-        try command.run()
-        
-        // THEN
-        try compare(package: "petstore-change-filename")
+
+    func testPestoreOnlySchemas() throws {
+        try snapshot(
+            spec: .petstore,
+            name: "petstore-only-schemas",
+            configuration: """
+            generate: [entities, package]
+            """
+        )
     }
     
     func testPetsStoreChangeEntityname() throws {
-        // GIVEN
-        let command = try Generate.parse([
-            pathForSpec(named: "petstore", ext: "yaml"),
-            "--output", temp.url.path,
-            "--package", "petstore-change-entityname",
-            "--entityname-template", "%0Generated"
-        ])
-        
-        // WHEN
-        try command.run()
-        
-        // THEN
-        try compare(package: "petstore-change-entityname")
+        try snapshot(
+            spec: .petstore,
+            name: "petstore-change-entityname",
+            configuration: """
+            entities:
+              nameTemplate: "%0Generated"
+            """
+        )
     }
     
     func testPestoreSingleThreaded() throws {
-        // GIVEN
-        let command = try Generate.parse([
-            pathForSpec(named: "petstore", ext: "yaml"),
-            "--output", temp.url.path,
-            "--package", "petstore-single-threaded",
-            "--single-threaded"
-        ])
-        
-        // WHEN
-        try command.run()
-        
-        // THEN
-        try compare(package: "petstore-single-threaded")
+        try snapshot(
+            spec: .petstore,
+            name: "petstore-single-threaded",
+            arguments: [
+                "--single-threaded"
+            ]
+        )
     }
     
     func testPetstoreDisablePackages() throws {
-        // GIVEN
-        let command = try Generate.parse([
-            pathForSpec(named: "petstore", ext: "yaml"),
-            "--output", temp.url.path.appending("/petstore-no-package"),
-            "--module", "Petstore"
-        ])
-        
-        // WHEN
-        try command.run()
-        
-        // THEN
-        try compare(package: "petstore-no-package")
+        try snapshot(
+            spec: .petstore,
+            name: "petstore-no-package",
+            arguments: [
+                "--config-option", "module=Petstore",
+                "--config-option", "generate=[entities, paths]"
+            ]
+        )
     }
     
-    func testPetstoreSplit() throws {
-        // GIVEN
-        let command = try Generate.parse([
-            pathForSpec(named: "petstore", ext: "yaml"),
-            "--output", temp.url.path,
-            "--package", "petstore-split",
-            "--split"
-        ])
-        
-        // WHEN
-        try command.run()
-        
-        // THEN
-        try compare(package: "petstore-split")
+    func testPetstoreMergeSources() throws {
+        try snapshot(
+            spec: .petstore,
+            name: "petstore-merge-sources",
+            configuration: """
+            mergeSources: true
+            """
+        )
     }
     
     func testPestoreAddCustomImport() throws {
-        // GIVEN
-        let command = try Generate.parse([
-            pathForSpec(named: "petstore", ext: "yaml"),
-            "--output", temp.url.path,
-            "--package", "petstore-custom-imports",
-            "--config", config("""
+        try snapshot(
+            spec: .petstore,
+            name: "petstore-custom-imports",
+            testCompilationOnLinux: false, // custom imports aren't available there.
+            configuration: """
             {
                 "paths": {
                     "imports": ["Get", "HTTPHeaders", "CoreData"]
@@ -117,295 +87,191 @@ final class GenerateOptionsTests: GenerateBaseTests {
                     "imports": ["CoreLocation"]
                 }
             }
-            """)
-        ])
-
-        // WHEN
-        try command.run()
-        
-        // THEN
-        try compare(package: "petstore-custom-imports")
-    }
-    
-    func testPestoreAddOperationId() throws {
-        // GIVEN
-        let command = try Generate.parse([
-            pathForSpec(named: "petstore", ext: "yaml"),
-            "--output", temp.url.path,
-            "--package", "petstore-operation-id",
-            "--config", config("""
-            {
-                "paths": {
-                    "isAddingOperationIds": true
-                }
-            }
-            """)
-        ])
-        
-        // WHEN
-        try command.run()
-        
-        // THEN
-        try compare(package: "petstore-operation-id")
+            """
+        )
     }
         
     func testPestoreGenerateClasses() throws {
-        // GIVEN
-        let command = try Generate.parse([
-            pathForSpec(named: "petstore", ext: "yaml"),
-            "--output", temp.url.path,
-            "--package", "petstore-generate-classes",
-            "--config", config("""
+        try snapshot(
+            spec: .petstore,
+            name: "petstore-generate-classes",
+            configuration: """
             {
                 "entities": {
-                    "isGeneratingStructs": false
+                    "defaultType": "finalClass"
                 }
             }
-            """)
-        ])
-        
-        // WHEN
-        try command.run()
-        
-        // THEN
-        try compare(package: "petstore-generate-classes")
+            """
+        )
     }
     
     func testPestoreSomeEntitiesAsClasses() throws {
-        // GIVEN
-        let command = try Generate.parse([
-            pathForSpec(named: "petstore", ext: "yaml"),
-            "--output", temp.url.path,
-            "--package", "petstore-some-entities-as-classes",
-            "--config", config("""
+        try snapshot(
+            spec: .petstore,
+            name: "petstore-some-entities-as-classes",
+            configuration: """
             {
                 "entities": {
-                    "entitiesGeneratedAsClasses": ["Store"]
+                    "typeOverrides": {
+                        "Store": "finalClass"
+                    }
                 }
             }
-            """)
-        ])
-        
-        // WHEN
-        try command.run()
-        
-        // THEN
-        try compare(package: "petstore-some-entities-as-classes")
+            """
+        )
     }
     
     func testPetstoreOverrideGenerateAsStructs() throws {
-        // GIVEN
-        let command = try Generate.parse([
-            pathForSpec(named: "petstore", ext: "yaml"),
-            "--output", temp.url.path,
-            "--package", "petstore-some-entities-as-structs",
-            "--config", config("""
+        try snapshot(
+            spec: .petstore,
+            name: "petstore-some-entities-as-structs",
+            configuration: """
             {
                 "entities": {
-                    "isGeneratingStructs": false,
-                    "entitiesGeneratedAsStructs": ["Error"]
+                    "defaultType": "finalClass",
+                    "typeOverrides": {
+                        "Error": "struct"
+                    }
                 }
             }
-            """)
-        ])
-        
-        // WHEN
-        try command.run()
-        
-        // THEN
-        try compare(package: "petstore-some-entities-as-structs")
+            """
+        )
     }
     
     func testPetstoreBaseClass() throws {
-        // GIVEN
-        let command = try Generate.parse([
-            pathForSpec(named: "petstore", ext: "yaml"),
-            "--output", temp.url.path,
-            "--package", "petstore-base-class",
-            "--config", config("""
+        try snapshot(
+            spec: .petstore,
+            name: "petstore-base-class",
+            configuration: """
             {
                 "entities": {
-                    "isGeneratingStructs": false,
+                    "defaultType": "finalClass",
                     "baseClass": "NSObject"
                 }
             }
-            """)
-        ])
-        
-        // WHEN
-        try command.run()
-        
-        // THEN
-        try compare(package: "petstore-base-class")
+            """
+        )
     }
     
     func testPetstoreDisableCommentsGeneration() throws {
-        // GIVEN
-        let command = try Generate.parse([
-            pathForSpec(named: "petstore", ext: "yaml"),
-            "--output", temp.url.path,
-            "--package", "petstore-disable-comments",
-            "--config", config("""
+        try snapshot(
+            spec: .petstore,
+            name: "petstore-disable-comments",
+            configuration: """
             {
-                "comments": {
-                    "isEnabled": false
-                }
+                "commentOptions": false
             }
-            """)
-        ])
-        
-        // WHEN
-        try command.run()
-        
-        // THEN
-        try compare(package: "petstore-disable-comments")
+            """
+        )
     }
     
     func testPetstoreDisableInitWithCoder() throws {
-        // GIVEN
-        let command = try Generate.parse([
-            pathForSpec(named: "petstore", ext: "yaml"),
-            "--output", temp.url.path,
-            "--package", "petstore-disable-init-with-coder",
-            "--config", config("""
+        try snapshot(
+            spec: .petstore,
+            name: "petstore-disable-init-with-coder",
+            configuration: """
             {
                 "entities": {
-                    "isGeneratingInitWithDecoder": false
+                    "alwaysIncludeDecodableImplementation": false
                 }
             }
-            """)
-        ])
-        
-        // WHEN
-        try command.run()
-        
-        // THEN
-        try compare(package: "petstore-disable-init-with-coder")
+            """
+        )
     }
     
     func testPetstoreDisableInlining() throws {
-        // GIVEN
-        let command = try Generate.parse([
-            pathForSpec(named: "petstore", ext: "yaml"),
-            "--output", temp.url.path,
-            "--package", "petstore-disable-inlining",
-            "--config", config("""
+        try snapshot(
+            spec: .petstore,
+            name: "petstore-disable-inlining",
+            configuration: """
             {
-                "isInliningTypealiases": false
+                "inlineTypealiases": false
             }
-            """)
-        ])
-                
-        // WHEN
-        try command.run()
-        
-        // THEN
-        try compare(package: "petstore-disable-inlining")
+            """
+        )
     }
     
     func testPetstoreDisableMutableProperties() throws {
-        // GIVEN
-        let command = try Generate.parse([
-            pathForSpec(named: "petstore", ext: "yaml"),
-            "--generate", "entities",
-            "--output", temp.url.path,
-            "--package", "petstore-disable-mutable-properties",
-            "--config", config("""
+        try snapshot(
+            spec: .petstore,
+            name: "petstore-disable-mutable-properties",
+            configuration: """
             {
+                "generate": ["entities", "package"],
                 "entities": {
-                    "entitiesGeneratedAsClasses": ["Store"],
-                    "isGeneratingMutableClassProperties": false,
-                    "isGeneratingMutableStructProperties": false
+                    "typeOverrides": {
+                        "Store": "finalClass"
+                    },
+                    "mutableProperties": false
                 }
             }
-            """)
-        ])
-        
-        // WHEN
-        try command.run()
-        
-        // THEN
-        try compare(package: "petstore-disable-mutable-properties")
+            """
+        )
     }
     
     func testPetstoreEnableMutableProperties() throws {
-        // GIVEN
-        let command = try Generate.parse([
-            pathForSpec(named: "petstore", ext: "yaml"),
-            "--generate", "entities",
-            "--output", temp.url.path,
-            "--package", "petstore-enable-mutable-properties",
-            "--config", config("""
+        try snapshot(
+            spec: .petstore,
+            name: "petstore-enable-mutable-properties",
+            configuration: """
             {
+                "generate": ["entities", "package"],
                 "entities": {
-                    "entitiesGeneratedAsClasses": ["Store"],
-                    "isGeneratingMutableClassProperties": true,
-                    "isGeneratingMutableStructProperties": true
+                    "typeOverrides": {
+                        "Store": "finalClass"
+                    },
+                    "mutableProperties": ["classes", "structs"],
                 }
             }
-            """)
-        ])
-        
-        // WHEN
-        try command.run()
-        
-        // THEN
-        try compare(package: "petstore-enable-mutable-properties")
+            """
+        )
     }
 
     func testPetstoreChangeNamespaceWhenRestStyle() throws {
-        // GIVEN
-        let command = try Generate.parse([
-            pathForSpec(named: "petstore", ext: "yaml"),
-            "--output", temp.url.path,
-            "--package", "petstore-change-namespace-when-rest-style",
-            "--config", config("""
+        try snapshot(
+            spec: .petstore,
+            name: "petstore-change-namespace-when-rest-style",
+            configuration: """
             {
                 "paths": {
                     "style": "rest",
                     "namespace": "Namespace",
                 }
             }
-            """)
-        ])
-
-        // WHEN
-        try command.run()
-
-        // THEN
-        try compare(package: "petstore-change-namespace-when-rest-style")
+            """
+        )
     }
 
     func testPetstoreChangeNamespaceWhenOperationsStyle() throws {
-        // GIVEN
-        let command = try Generate.parse([
-            pathForSpec(named: "petstore", ext: "yaml"),
-            "--output", temp.url.path,
-            "--package", "petstore-change-namespace-when-operations-style",
-            "--config", config("""
+        try snapshot(
+            spec: .petstore,
+            name: "petstore-change-namespace-when-operations-style",
+            configuration: """
             {
                 "paths": {
                     "style": "operations",
                     "namespace": "Namespace",
                 }
             }
-            """)
-        ])
-
-        // WHEN
-        try command.run()
-
-        // THEN
-        try compare(package: "petstore-change-namespace-when-operations-style")
+            """
+        )
+    }
+    
+    func testPetstoreInternalAccessControl() throws {
+        try snapshot(
+            spec: .edgecases,
+            name: "edgecases-change-access-control",
+            configuration: """
+            access: internal
+            """
+        )
     }
         
-    func testEdgecasesRenamePrperties() throws {
-        // GIVEN
-        let command = try Generate.parse([
-            pathForSpec(named: "edgecases", ext: "yaml"),
-            "--output", temp.url.path,
-            "--package", "edgecases-rename-properties",
-            "--config", config("""
+    func testEdgecasesRenameProperties() throws {
+        try snapshot(
+            spec: .edgecases,
+            name: "edgecases-rename-properties",
+            configuration: """
             {
                 "rename": {
                     "properties": {
@@ -416,121 +282,59 @@ final class GenerateOptionsTests: GenerateBaseTests {
                     }
                 }
             }
-            """)
-        ])
-                
-        // WHEN
-        try command.run()
-        
-        // THEN
-        //
-        // 1) "Category.name": "title",
-        // Only Categy.name should be affected, but not anything else, e.g. Tag.name
-        //
-        // 2) "Pet.status": "state"
-        // Check that enum name also changes
-        //
-        // 3) "complete": "isDone"
-        // // Applied before boolean logic
-        
-        try compare(package: "edgecases-rename-properties")
+            """
+        )
     }
     
     
     func testEdgecasesPassYAMLConfiguration() throws {
-        // GIVEN
-        let command = try Generate.parse([
-            pathForSpec(named: "edgecases", ext: "yaml"),
-            "--output", temp.url.path,
-            "--package", "edgecases-yaml-config",
-            "--config", config("""
+        try snapshot(
+            spec: .edgecases,
+            name: "edgecases-yaml-config",
+            configuration: """
             rename:
                 properties:
                     id: identifier
                     Category.name: title
                     Pet.status: state
-                    complete: isDone
-            """, ext: "yaml")
-            ])
-            
-        // WHEN
-        try command.run()
-        
-        // THEN
-        try compare(package: "edgecases-yaml-config")
-    }
-    
-    func testEdgecasesChangeAccessControl() throws {
-        // GIVEN
-        let command = try Generate.parse([
-            pathForSpec(named: "edgecases", ext: "yaml"),
-            "--output", temp.url.path,
-            "--package", "edgecases-change-access-control",
-            "--config", config("""
-            {
-                "access": ""
-            }
-            """)
-        ])
-                
-        // WHEN
-        try command.run()
-        
-        // THEN
-        try compare(package: "edgecases-change-access-control")
+                    complete: done
+            """
+        )
     }
                     
     func testEdgecasesDisableAcronyms() throws {
-        // GIVEN
-        let command = try Generate.parse([
-            pathForSpec(named: "edgecases", ext: "yaml"),
-            "--output", temp.url.path,
-            "--package", "edgecases-disable-acronyms",
-            "--config", config("""
+        try snapshot(
+            spec: .edgecases,
+            name: "edgecases-disable-acronyms",
+            configuration: """
             {
-                "isReplacingCommonAcronyms": false
+                "acronyms": []
             }
-            """)
-        ])
-                
-        // WHEN
-        try command.run()
-        
-        // THEN
-        try compare(package: "edgecases-disable-acronyms")
+            """
+        )
     }
     
     func testEdgecasesDisableEnumGeneration() throws {
-        // GIVEN
-        let command = try Generate.parse([
-            pathForSpec(named: "edgecases", ext: "yaml"),
-            "--output", temp.url.path,
-            "--package", "edgecases-disable-enums",
-            "--config", config("""
+        try snapshot(
+            spec: .edgecases,
+            name: "edgecases-disable-enums",
+            configuration: """
             {
-                "isGeneratingEnums": false
+                "generate": ["entities", "paths", "package"]
             }
-            """)
-        ])
-                
-        // WHEN
-        try command.run()
-        
-        // THEN
-        try compare(package: "edgecases-disable-enums")
+            """
+        )
     }
     
     func testEdgecasesRename() throws {
-        // GIVEN
-        let command = try Generate.parse([
-            pathForSpec(named: "edgecases", ext: "yaml"),
-            "--output", temp.url.path,
-            "--package", "edgecases-rename",
-            "--config", config("""
+        try snapshot(
+            spec: .edgecases,
+            name: "edgecases-rename",
+            configuration: """
             {
                 "rename": {
                     "properties": {
-                        "ContainerA.Child.Child.renameMe": "onlyItRenamed"
+                        "ContainerA.Child.Child.rename-me": "onlyItRenamed"
                     },
                     "entities": {
                         "ApiResponse": "APIResponse",
@@ -538,127 +342,224 @@ final class GenerateOptionsTests: GenerateBaseTests {
                     }
                 }
             }
-            """)
-        ])
-                
-        // WHEN
-        try command.run()
-        
-        // THEN
-        // "Status" is not affected because it's an enum
-        try compare(package: "edgecases-rename")
+            """
+        )
     }
     
     func testEdgecasesIndentWithTabs() throws {
-        // GIVEN
-        let command = try Generate.parse([
-            pathForSpec(named: "edgecases", ext: "yaml"),
-            "--output", temp.url.path,
-            "--package", "edgecases-tabs",
-            "--config", config("""
+        try snapshot(
+            spec: .edgecases,
+            name: "edgecases-tabs",
+            configuration: """
             {
                 "indentation": "tabs"
             }
-            """)
-        ])
-                
-        // WHEN
-        try command.run()
-        
-        // THEN
-        try compare(package: "edgecases-tabs")
+            """
+        )
     }
     
     func testEdgecasesIndentWithTwoWidthSpaces() throws {
-        // GIVEN
-        let command = try Generate.parse([
-            pathForSpec(named: "edgecases", ext: "yaml"),
-            "--output", temp.url.path,
-            "--package", "edgecases-indent-with-two-width-spaces",
-            "--config", config("""
+        try snapshot(
+            spec: .edgecases,
+            name: "edgecases-indent-with-two-width-spaces",
+            configuration: """
             {
                 "spaceWidth": 2
             }
-            """)
-        ])
-                
-        // WHEN
-        try command.run()
-        
-        // THEN
-        try compare(package: "edgecases-indent-with-two-width-spaces")
+            """
+        )
     }
     
-    func testEdgecasesEnableIntegerCapacity() throws {
-        // GIVEN
-        let command = try Generate.parse([
-            pathForSpec(named: "edgecases", ext: "yaml"),
-            "--output", temp.url.path,
-            "--package", "edgecases-int32-int64",
-            "--config", config("""
-            {
-                "isUsingIntegersWithPredefinedCapacity": true
-            }
-            """)
-        ])
-                
-        // WHEN
-        try command.run()
-        
-        // THEN
-        try compare(package: "edgecases-int32-int64")
+    func testEdgecasesDataTypes() throws {
+        try snapshot(
+            spec: .edgecases,
+            name: "edgecases-data-types",
+            configuration: """
+            useNativeDate: false
+            dataTypes:
+              string:
+                date-time: AnyJSON
+                byte: String
+              integer:
+                int32: Double
+                int64: Int
+            paths:
+              includeResponseHeaders: false
+            """
+        )
     }
     
     func testEdgecasesGenerateCodingKeys() throws {
-        // GIVEN
-        let command = try Generate.parse([
-            pathForSpec(named: "edgecases", ext: "yaml"),
-            "--output", temp.url.path,
-            "--package", "edgecases-coding-keys",
-            "--config", config("""
+        try snapshot(
+            spec: .edgecases,
+            name: "edgecases-coding-keys",
+            configuration: """
             entities:
-                isGeneratingCustomCodingKeys: false
-            """, ext: "yaml")
-        ])
-                
-        // WHEN
-        try command.run()
-        
-        // THEN
-        try compare(package: "edgecases-coding-keys")
+                optimizeCodingKeys: false
+            """
+        )
     }
 
     func testStripNamePrefixNestedObjectsEnabled() throws {
-        // GIVEN
-        let command = try Generate.parse([
-            pathForSpec(named: "strip-parent-name-nested-objects", ext: "yaml"),
-            "--output", temp.url.path,
-            "--package", "strip-parent-name-nested-objects-enabled",
-            "--config", config("""
+        try snapshot(
+            spec: .stripParentNameNestedObjects,
+            name: "strip-parent-name-nested-objects-enabled",
+            configuration: """
             entities:
-                isStrippingParentNameInNestedObjects: true
-            """, ext: "yaml")
-        ])
-                
-        // WHEN
-        try command.run()
-        
-        // THEN
-        try compare(package: "strip-parent-name-nested-objects-enabled")
+                stripParentNameInNestedObjects: true
+            """
+        )
     }  
 
     func testStripNamePrefixNestedObjects() throws {
-        // GIVEN
-        let command = try Generate.parse([
-            pathForSpec(named: "strip-parent-name-nested-objects", ext: "yaml"),
-            "--output", temp.url.path,
-            "--package", "strip-parent-name-nested-objects-default"
-        ])
-                
-        // WHEN
-        try command.run()
-        
-        // THEN
-        try compare(package: "strip-parent-name-nested-objects-default")
-    }        
+        try snapshot(
+            spec: .stripParentNameNestedObjects,
+            name: "strip-parent-name-nested-objects-default"
+        )
+    }
+    
+    func testPetstoreIdentifiableEnabled() throws {
+        try snapshot(
+            spec: .petstore,
+            name: "petstore-identifiable",
+            configuration: """
+            generate:
+            - entities
+            - package
+            entities:
+                includeIdentifiableConformance: true
+            rename:
+                properties:
+                    Error.code: id
+            """
+        )
+    }
+    
+    func testPetstoreFilenameTemplate() throws {
+        try snapshot(
+            spec: .petstore,
+            name: "petstore-filename-template",
+            configuration: """
+            entities:
+                filenameTemplate: "%0Model.swift"
+            paths:
+                filenameTemplate: "%0API.swift"
+            """
+        )
+    }
+    
+    func testPetstoreEntityExclude() throws {
+        try snapshot(
+            spec: .petstore,
+            name: "petstore-entity-exclude",
+            configuration: """
+            generate: [entities, package]
+            entities:
+                exclude:
+                - Error
+                - Pet.id
+                - Store.pets
+            rename:
+                properties:
+                    Pet.id: not_id
+                    Pet.name: id
+            """
+        )
+    }
+    
+    func testPetstoreSPMImports() throws {
+        try snapshot(
+            spec: .petstore,
+            name: "petstore-SPM-imports",
+            testCompilationOnLinux: false, // custom imports aren't available there.
+            arguments: [],
+            configuration: """
+            package:
+                dependencies:
+                - url: https://github.com/apple/swift-argument-parser
+                  products:
+                  - ArgumentParser
+                  requirement:
+                      exact:
+                          version: 1.1.1
+                - url: https://github.com/apple/swift-algorithms
+                  products:
+                  - Algorithms
+                  requirement:
+                      range:
+                          from: 1.0.0
+                          to: 2.0.0
+                - url: https://github.com/apple/swift-metrics.git
+                  products:
+                  - Metrics
+                  requirement:
+                      closedRange:
+                          from: 2.0.0
+                          to: 2.9.1
+                - url: https://github.com/apple/swift-log
+                  products:
+                  - Logging
+                  requirement:
+                      branch:
+                          name: main
+                - url: https://github.com/apple/swift-numerics
+                  products:
+                  - RealModule
+                  - ComplexModule
+                  requirement:
+                      commit:
+                          hash: 7f2d022d3d9b55bf812814f5d01896cbfa0fd4da
+                - url: https://github.com/apple/swift-system
+                  products:
+                  - SystemPackage
+                  requirement:
+                      from:
+                          version: 1.2.1
+            """
+        )
+    }
+    
+    func testPetstoreSPMImportsLinux() throws {
+        try snapshot(
+            spec: .petstore,
+            name: "petstore-SPM-imports-linux",
+            arguments: [],
+            configuration: """
+            package:
+                dependencies:
+                - url: https://github.com/apple/swift-log
+                  products:
+                  - Logging
+                  requirement:
+                      branch:
+                          name: main
+                - url: https://github.com/apple/swift-numerics
+                  products:
+                  - RealModule
+                  - ComplexModule
+                  requirement:
+                      commit:
+                          hash: 7f2d022d3d9b55bf812814f5d01896cbfa0fd4da
+            """
+            )
+    }
+
+    func testFileHeaderComment() throws {
+        try snapshot(
+            spec: .petstore,
+            name: "file-header-comment",
+            configuration: """
+            fileHeaderComment: |
+              // Generated by Create API
+              // https://github.com/CreateAPI/CreateAPI
+              //
+              // swiftformat:disable all
+            generate: [entities]
+            mergeSources: true
+            entities:
+              include:
+              - Pet
+            """
+        )
+    }
 }

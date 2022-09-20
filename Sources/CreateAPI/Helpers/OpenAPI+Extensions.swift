@@ -1,7 +1,3 @@
-// The MIT License (MIT)
-//
-// Copyright (c) 2021-2022 Alexander Grebenyuk (github.com/kean).
-
 import Foundation
 import OpenAPIKit30
 
@@ -85,7 +81,7 @@ extension OpenAPI.PathItem {
             self.delete.map { ("delete", $0) },
             self.options.map { ("options", $0) },
             self.head.map { ("head", $0) },
-            self.trace.map { ("trace", $0) },
+            self.trace.map { ("trace", $0) }
         ].compactMap { $0 }
     }
 }
